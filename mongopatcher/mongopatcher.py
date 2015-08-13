@@ -2,6 +2,7 @@ import os
 import re
 import pymongo
 import imp
+from datetime import datetime
 
 
 DEFAULT_COLLECTION = 'mongopatcher'
@@ -30,6 +31,12 @@ class Manifest:
             self._manifest = self._load_manifest()
         return self._manifest['version']
 
+    @property
+    def history(self):
+        if not self._manifest:
+            self._manifest = self._load_manifest()
+        return self._manifest['history']
+
     def is_initialized(self):
         return bool(self.collection.find_one({'_id': 'manifest'}))
 
@@ -53,17 +60,24 @@ class Manifest:
         _check_version_format(version)
         if not force and self.collection.find_one({'_id': 'manifest'}):
             raise DatabaseManifestError("Database has already a manifest")
-        manifest = self.collection.update(
-            {'_id': 'manifest'}, {'_id': 'manifest', 'version': version}, upsert=True)
+        manifest = self.collection.update({'_id': 'manifest'}, {
+            '_id': 'manifest', 'version': version, 'history': [
+                {'timestamp': datetime.utcnow(), 'version': version,
+                 'reason': 'Initialize version'}
+            ]}, upsert=True)
         return manifest
 
-    def update(self, version):
+    def update(self, version, reason=None):
         """
         Modify the database's manifest
         """
         _check_version_format(version)
-        return self.collection.update({'_id': 'manifest'},
-                                      {'$set': {'version': version}})
+        return self.collection.update({'_id': 'manifest'}, {
+            '$set': {'version': version},
+            '$push': {'history': {
+                'timestamp': datetime.utcnow(), 'version': version,
+                'reason': reason}}
+        })
 
 
 class MongoPatcher:
@@ -164,7 +178,8 @@ class Patch:
             print('\t%s...' % fix.__name__, flush=True, end='')
             fix(db)
             print(' Done !')
-        manifest.update(self.target_version)
+        manifest.update(self.target_version,
+                        reason='Update from %s' % self.base_version)
 
     def fix(self, fn):
         """

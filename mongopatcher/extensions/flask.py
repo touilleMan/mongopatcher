@@ -48,7 +48,7 @@ def upgrade(yes=False, dry_run=False, patches_dir=None):
     else:
         if (yes or prompt_bool("Are you sure you want to alter "
                                " {green}{name}{endc}".format(
-                green='\033[92m', name=db.get_default_database(),
+                green='\033[92m', name=patcher.db,
                 endc='\033[0m'))):
             patcher.discover_and_apply(patches_dir)
         else:
@@ -82,10 +82,18 @@ def init(version=None, force=False):
 
 
 @patcher_manager.command
-def info():
+@patcher_manager.option('-v', '--verbose', help="Show history")
+def info(verbose=False):
     """Show version of the database"""
     if _get_mongopatcher().manifest.is_initialized():
         print('Manifest version: %s' % _get_mongopatcher().manifest.version)
+        if verbose:
+            print('Update history:')
+            for update in reversed(_get_mongopatcher().manifest.history):
+                reason = update.get('reason')
+                reason = '(%s)' % reason if reason else ''
+                print(' - %s: %s %s' % (update['timestamp'], update['version'],
+                                        reason))
     else:
         print('No manifest found')
 
