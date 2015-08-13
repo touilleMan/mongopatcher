@@ -68,7 +68,7 @@ def discover(patches_dir=None):
     else:
         print('Patches available:')
         for patch in patches:
-            print(patch.target_version)
+            print(' - %s' % patch.target_version)
 
 
 @patcher_manager.command
