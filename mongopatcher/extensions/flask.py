@@ -59,11 +59,15 @@ def upgrade(yes=False, dry_run=False, patches_dir=None):
 @patcher_manager.option('-p', '--patches-dir', dest='patches_dir',
                         help="Directory where to find the patches")
 @patcher_manager.option('-v', '--verbose', help="Show patches' descriptions")
-def discover(patches_dir=None, verbose=False):
+@patcher_manager.option('-n', '--name', help="Only look for the given patch")
+def discover(patches_dir=None, verbose=False, name=None):
     """List the patches available in the given patches directory"""
     if not patches_dir:
         patches_dir = current_app.config['MONGOPATCHER_PATCHES_DIR']
     patches = _get_mongopatcher().discover(patches_dir)
+    name = name.split(',')
+    if name:
+        patches = [p for p in patches if p.target_version in name]
     if not patches:
         print('No patches found')
     else:
