@@ -58,7 +58,8 @@ def upgrade(yes=False, dry_run=False, patches_dir=None):
 @patcher_manager.command
 @patcher_manager.option('-p', '--patches-dir', dest='patches_dir',
                         help="Directory where to find the patches")
-def discover(patches_dir=None):
+@patcher_manager.option('-v', '--verbose', help="Show patches' descriptions")
+def discover(patches_dir=None, verbose=False):
     """List the patches available in the given patches directory"""
     if not patches_dir:
         patches_dir = current_app.config['MONGOPATCHER_PATCHES_DIR']
@@ -68,7 +69,13 @@ def discover(patches_dir=None):
     else:
         print('Patches available:')
         for patch in patches:
-            print(' - %s' % patch.target_version)
+            if verbose:
+                print()
+                print(patch.target_version)
+                print("~" * len(patch.target_version))
+                print('\t' + patch.patchnote.strip().replace('\n', '\n\t'))
+            else:
+                print(' - %s' % patch.target_version)
 
 
 @patcher_manager.command
