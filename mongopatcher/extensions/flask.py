@@ -65,8 +65,8 @@ def discover(patches_dir=None, verbose=False, name=None):
     if not patches_dir:
         patches_dir = current_app.config['MONGOPATCHER_PATCHES_DIR']
     patches = _get_mongopatcher().discover(patches_dir)
-    name = name.split(',')
     if name:
+        name = name.split(',')
         patches = [p for p in patches if p.target_version in name]
     if not patches:
         print('No patches found')
