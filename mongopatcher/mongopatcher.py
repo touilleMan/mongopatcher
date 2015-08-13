@@ -79,15 +79,6 @@ class MongoPatcher:
         self.patches_dir = patches_dir
         self.manifest = Manifest(db, collection)
 
-    def init_db(version):
-        _check_version_format(version)
-
-    def init_app(self, app):
-        self.app = app
-        self.host = app.config['MONGODB_URL']
-        self.app_version = app.config['APPLICATION_VERSION']
-        _check_version_format(self.app_version)
-
     def discover(self, directory):
         patches = []
         for root, dirs, files in os.walk(directory):
