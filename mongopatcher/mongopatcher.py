@@ -19,6 +19,9 @@ class DatabaseManifestError(Exception):
 
 
 class Manifest:
+    """
+    Handle the database's version and history informations
+    """
 
     def __init__(self, db, manifest_collection):
         self.db = db
@@ -38,6 +41,9 @@ class Manifest:
         return self._manifest['history']
 
     def is_initialized(self):
+        """
+        Check if the database has a manifest registered
+        """
         return bool(self.collection.find_one({'_id': 'manifest'}))
 
     def _load_manifest(self):
@@ -70,6 +76,9 @@ class Manifest:
     def update(self, version, reason=None):
         """
         Modify the database's manifest
+
+        :param version: New version of the manifest
+        :param reason: Optional reason of the update (i.g. "Update from x.y.z")
         """
         _check_version_format(version)
         return self.collection.update({'_id': 'manifest'}, {
@@ -81,6 +90,10 @@ class Manifest:
 
 
 class MongoPatcher:
+    """
+    Patch manager: retrieve the patches, apply them and update the
+    database manifest
+    """
 
     def __init__(self, db, patches_dir=DEFAULT_PATCHES_DIR,
                  collection=DEFAULT_COLLECTION):
@@ -94,6 +107,11 @@ class MongoPatcher:
         self.manifest = Manifest(db, collection)
 
     def discover(self, directory):
+        """
+        Recusively search & collect :class:`Patch`
+
+        :param directory: Directory to search in
+        """
         patches = []
         for root, dirs, files in os.walk(directory):
             for f in files:
@@ -109,13 +127,16 @@ class MongoPatcher:
 
     def discover_and_apply(self, directory, dry_run=False):
         """
-        Retrieve the patches for the given directory and try to apply
-        them against the database
+        Retrieve the patches and try to apply them against the database
 
+        :param directory: Directory to search the patch in
         :param dry_run: Don't actually apply the patches
         """
         patches_dict = {p.base_version: p for p in self.discover(directory)}
         current_version = self.manifest.version
+        if not patches_dict.get(current_version):
+            print('No patch to apply')
+            return
         if dry_run:
             msg = 'Database should be in version %s !'
         else:
@@ -144,8 +165,9 @@ class Patch:
      - apply each patch's fix
      - update database manifest
 
-    .. note:: Make sure no other process (i.g. backend, worker) are running
-    before applying the patch to prevent inconsistent states
+    .. note::
+        Make sure no other process (i.g. backend, worker) are running
+        before applying the patch to prevent inconsistent states
     """
 
     def __init__(self, base_version, target_version, patchnote=None):
@@ -188,12 +210,21 @@ class Patch:
         A fix must be a function that take a :class:`pymongo.MongoClient`
         instance as parameter
 
-        :example:
+        .. example:
 
             p = Patch('0.1.0', '0.1.1')
             @p.fix
             def my_fix(db):
                 db['my_collection'].update({}, {'$set': {'updated': True}})
+
+        .. note:
+            Fix order is not guarantee. If you need it, consider using sub
+            functions ::
+
+                @p.fix
+                def macro_fix(db):
+                    first_fix_to_apply(db)
+                    second_fix_to_apply(db)
         """
         self.fixes.append(fn)
         return fn

@@ -7,6 +7,14 @@ from mongopatcher import MongoPatcher
 
 
 def init_patcher(app, db):
+    """
+    Init mongopatcher for the application
+
+    :param app: :class:`flask.Flask` app to initialize
+    :param db: :class:`pymongo.MongoClient` to work on
+
+    .. note: This function must be called before using ``patcher_manager``
+    """
     app.config.setdefault('MONGOPATCHER_PATCHES_DIR', 'patches')
     app.config.setdefault('MONGOPATCHER_COLLECTION', 'mongopatcher')
     app.config.setdefault('MONGOPATCHER_APP_VERSION', '0.1.0')
@@ -21,6 +29,7 @@ def init_patcher(app, db):
         # Raise an exception if extension already initialized as
         # potentially new configuration would not be loaded.
         raise Exception('Extension already initialized')
+    return mp
 
 
 patcher_manager = Manager(usage="Perform incremental patch on database")
@@ -40,6 +49,9 @@ def _get_mongopatcher():
 @patcher_manager.option('-p', '--patches_dir',
                         help="Directory where to find the patches")
 def upgrade(yes=False, dry_run=False, patches_dir=None):
+    """
+    Apply recusively the patches available until the last version
+    """
     if not patches_dir:
         patches_dir = current_app.config['MONGOPATCHER_PATCHES_DIR']
     patcher = _get_mongopatcher()
@@ -99,7 +111,7 @@ def info(verbose=False):
     if _get_mongopatcher().manifest.is_initialized():
         print('Manifest version: %s' % _get_mongopatcher().manifest.version)
         if verbose:
-            print('Update history:')
+            print('\nUpdate history:')
             for update in reversed(_get_mongopatcher().manifest.history):
                 reason = update.get('reason')
                 reason = '(%s)' % reason if reason else ''
