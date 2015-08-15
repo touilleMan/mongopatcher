@@ -43,12 +43,13 @@ def _get_mongopatcher():
     return mongopatcher
 
 
-@patcher_manager.command
-@patcher_manager.option('-y', '--yes', help="Don't ask for confirmation")
-@patcher_manager.option('-d', '--dry_run', help="Pretend to do the upgrades")
-@patcher_manager.option('-p', '--patches_dir',
+@patcher_manager.option('-y', '--yes', action='store_true', default=False,
+                        help="Don't ask for confirmation")
+@patcher_manager.option('-d', '--dry_run', action='store_true', default=False,
+                        help="Pretend to do the upgrades")
+@patcher_manager.option('-p', '--patches_dir', default=None,
                         help="Directory where to find the patches")
-def upgrade(yes=False, dry_run=False, patches_dir=None):
+def upgrade(yes, dry_run, patches_dir):
     """
     Apply recusively the patches available until the last version
     """
@@ -67,19 +68,20 @@ def upgrade(yes=False, dry_run=False, patches_dir=None):
             raise SystemExit('You changed your mind, exiting...')
 
 
-@patcher_manager.command
-@patcher_manager.option('-p', '--patches-dir', dest='patches_dir',
+@patcher_manager.option('-p', '--patches-dir', dest='patches_dir', default=None,
                         help="Directory where to find the patches")
-@patcher_manager.option('-v', '--verbose', help="Show patches' descriptions")
-@patcher_manager.option('-n', '--name', help="Only look for the given patch")
-def discover(patches_dir=None, verbose=False, name=None):
+@patcher_manager.option('-v', '--verbose', action='store_true', default=False,
+                        help="Show patches' descriptions")
+@patcher_manager.option('-n', '--name', default=None,
+                        help="Filter the patches (can be a regex)")
+def discover(patches_dir, verbose, name):
     """List the patches available in the given patches directory"""
     if not patches_dir:
         patches_dir = current_app.config['MONGOPATCHER_PATCHES_DIR']
     patches = _get_mongopatcher().discover(patches_dir)
     if name:
-        name = name.split(',')
-        patches = [p for p in patches if p.target_version in name]
+        import re
+        patches = [p for p in patches if re.match(name, p.target_version)]
     if not patches:
         print('No patches found')
     else:
@@ -94,19 +96,20 @@ def discover(patches_dir=None, verbose=False, name=None):
                 print(' - %s' % patch.target_version)
 
 
-@patcher_manager.command
-@patcher_manager.option('-f', '--force', help="Overwrite existing manifest")
-@patcher_manager.option('-v', '--version', help="Version of the manifest")
-def init(version=None, force=False):
+@patcher_manager.option('-f', '--force', action='store_true', default=False,
+                        help="Overwrite existing manifest")
+@patcher_manager.option('-v', '--version', default=None,
+                        help="Version of the manifest")
+def init(version, force):
     """Initialize mongopatcher manifest on the mongodb database"""
     version = version or current_app.config['MONGOPATCHER_APP_VERSION']
     _get_mongopatcher().manifest.initialize(version, force)
     print('Manifest initialized to version %s' % version)
 
 
-@patcher_manager.command
-@patcher_manager.option('-v', '--verbose', help="Show history")
-def info(verbose=False):
+@patcher_manager.option('-v', '--verbose', action='store_true',
+                        default=False, help="Show history")
+def info(verbose):
     """Show version of the database"""
     if _get_mongopatcher().manifest.is_initialized():
         print('Manifest version: %s' % _get_mongopatcher().manifest.version)
