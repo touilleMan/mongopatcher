@@ -4,6 +4,8 @@ import pymongo
 import imp
 from datetime import datetime
 
+from mongopatcher.tools import yellow, tabulate
+
 
 DEFAULT_COLLECTION = 'mongopatcher'
 DEFAULT_PATCHES_DIR = 'patches'
@@ -14,13 +16,13 @@ def _check_version_format(version):
         "Invalid version number `%s` (should be x.y.z style)" % version
 
 
-class DatabaseManifestError(Exception):
+class DatamodelManifestError(Exception):
     pass
 
 
 class Manifest:
     """
-    Handle the database's version and history informations
+    Handle the datamodel's version and history informations
     """
 
     def __init__(self, db, manifest_collection):
@@ -42,30 +44,30 @@ class Manifest:
 
     def is_initialized(self):
         """
-        Check if the database has a manifest registered
+        Check if the datamodel has a manifest registered
         """
         return bool(self.collection.find_one({'_id': 'manifest'}))
 
     def _load_manifest(self):
         """
-        Retrieve database's manifest or raise DatabaseManifestError exception
+        Retrieve datamodel's manifest or raise DatamodelManifestError exception
         """
         manifest = self.collection.find_one({'_id': 'manifest'})
         if not manifest:
-            raise DatabaseManifestError("Database's manifest is missing, make "
-                                        "sure the database is initialized")
+            raise DatamodelManifestError("Datamodel's manifest is missing, "
+                                         "make sure it has been initialized")
         return manifest
 
     def initialize(self, version, force=False):
         """
-        Initialize the manifest document in the given database
+        Initialize the manifest document in the given datamodel
 
-        :param version: Version to set the database
+        :param version: Actual version of the datamodel
         :param force: Replace manifest if it already exists
         """
         _check_version_format(version)
         if not force and self.collection.find_one({'_id': 'manifest'}):
-            raise DatabaseManifestError("Database has already a manifest")
+            raise DatamodelManifestError("Datamodel has already a manifest")
         manifest = self.collection.update({'_id': 'manifest'}, {
             '_id': 'manifest', 'version': version, 'history': [
                 {'timestamp': datetime.utcnow(), 'version': version,
@@ -75,7 +77,7 @@ class Manifest:
 
     def update(self, version, reason=None):
         """
-        Modify the database's manifest
+        Modify the datamodel's manifest
 
         :param version: New version of the manifest
         :param reason: Optional reason of the update (i.g. "Update from x.y.z")
@@ -92,7 +94,7 @@ class Manifest:
 class MongoPatcher:
     """
     Patch manager: retrieve the patches, apply them and update the
-    database manifest
+    datamodel's manifest
     """
 
     def __init__(self, db, patches_dir=DEFAULT_PATCHES_DIR,
@@ -127,7 +129,7 @@ class MongoPatcher:
 
     def discover_and_apply(self, directory, dry_run=False):
         """
-        Retrieve the patches and try to apply them against the database
+        Retrieve the patches and try to apply them against the datamodel
 
         :param directory: Directory to search the patch in
         :param dry_run: Don't actually apply the patches
@@ -138,18 +140,25 @@ class MongoPatcher:
             print('No patch to apply')
             return
         if dry_run:
-            msg = 'Database should be in version %s !'
+            msg = 'Datamodel should be in version %s !'
         else:
-            msg = 'Database in now in version %s !'
+            msg = 'Datamodel in now in version %s !'
+        pss = []
         while True:
             patch = patches_dict.get(current_version)
             if not patch:
                 print(msg % current_version)
+                if pss:
+                    print()
+                    print(yellow('\n'.join(pss)))
                 return
             print('Applying patch %s => %s' % (patch.base_version,
                                                patch.target_version))
             if not dry_run:
                 self.apply_patch(patch)
+            if patch.ps:
+                pss.append("Patch %s:\n%s" % (patch.target_version,
+                                              tabulate(patch.ps)))
             current_version = patch.target_version
 
     def apply_patch(self, patch):
@@ -158,41 +167,58 @@ class MongoPatcher:
 
 class Patch:
     """
-    A patch is a list of fixes to apply against a given version of the database
+    A patch is a list of fixes to apply against a given version of
+    the datamodel
 
     Here is the patch apply routine:
-     - check if the patch can be applied against the current database
+     - check if the patch can be applied against the current datamodel
+       according to it manifest
      - apply each patch's fix
-     - update database manifest
+     - update datamodel's manifest
 
     .. note::
         Make sure no other process (i.g. backend, worker) are running
         before applying the patch to prevent inconsistent states
     """
 
-    def __init__(self, base_version, target_version, patchnote=None):
+    def __init__(self, base_version, target_version, patchnote=None, ps=None):
+        """
+        :param base_version: Datamodel version to patch against
+        :param target_version: Datamodel version once the patch is applied
+        :param patchnote: Informations about the patch
+        :param ps: Message to display after the patch has been applied
+            (can be use to notify a side effect or the need
+            of a manual operation - like another database rebuild - in order
+            to finish the migration)
+
+        .. note::
+            If more than one patch has to be applied (i.g. updating from
+            1.0.0 to 1.0.2 through 1.0.1), the ps notes will be collected
+            and displayed at the very end of the patch process
+        """
         _check_version_format(base_version)
         _check_version_format(target_version)
 
         self.base_version = base_version
         self.target_version = target_version
         self.patchnote = patchnote
+        self.ps = ps
         self.fixes = []
 
     def can_be_applied(self, manifest, db):
         """
-        Check the current database state fulfill the requirements
+        Check the current datamodel state fulfill the requirements
         to run this patch
         """
         if manifest.version != self.base_version:
-            raise DatabaseManifestError(
-                "Database's manifest shows incompatible version to "
+            raise DatamodelManifestError(
+                "Datamodel's manifest shows incompatible version to "
                 "apply the patch (required: %s, available: %s)" %
                 (self.base_version, manifest.version))
 
     def apply(self, manifest, db, force=False):
         """
-        Run the given patch to update the database
+        Run the given patch to update the datamodel
         """
         if not force:
             self.can_be_applied(manifest, db)
@@ -212,7 +238,7 @@ class Patch:
 
         .. example:
 
-            p = Patch('0.1.0', '0.1.1')
+            p = Patch('0.1.0', '0.1.1', 'my_patchnote')
             @p.fix
             def my_fix(db):
                 db['my_collection'].update({}, {'$set': {'updated': True}})

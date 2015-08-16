@@ -4,6 +4,7 @@ from flask import current_app
 from flask.ext.script import Manager, prompt_bool
 
 from mongopatcher import MongoPatcher
+from mongopatcher.tools import green, tabulate
 
 
 def init_patcher(app, db):
@@ -17,7 +18,7 @@ def init_patcher(app, db):
     """
     app.config.setdefault('MONGOPATCHER_PATCHES_DIR', 'patches')
     app.config.setdefault('MONGOPATCHER_COLLECTION', 'mongopatcher')
-    app.config.setdefault('MONGOPATCHER_APP_VERSION', '0.1.0')
+    app.config.setdefault('MONGOPATCHER_DATAMODEL_VERSION', '0.0.0')
     if not hasattr(app, 'extensions'):
         app.extensions = {}
     if 'mongopatcher' not in app.extensions:
@@ -29,10 +30,23 @@ def init_patcher(app, db):
         # Raise an exception if extension already initialized as
         # potentially new configuration would not be loaded.
         raise Exception('Extension already initialized')
+    mp.__class__.need_upgrade = need_upgrade
+    mp.app_datamodel_version = app.config['MONGOPATCHER_DATAMODEL_VERSION']
     return mp
 
 
 patcher_manager = Manager(usage="Perform incremental patch on database")
+
+
+def need_upgrade(mp):
+    """
+    Check if the database's datamodel version is up to date with the
+    application declared datamodel version
+
+    :return: True if datamodel difers, False otherwise
+    """
+    return (not mp.manifest.version ==
+            mp.app_datamodel_version)
 
 
 def _get_mongopatcher():
@@ -47,38 +61,36 @@ def _get_mongopatcher():
                         help="Don't ask for confirmation")
 @patcher_manager.option('-d', '--dry_run', action='store_true', default=False,
                         help="Pretend to do the upgrades")
-@patcher_manager.option('-p', '--patches_dir', default=None,
+@patcher_manager.option('-p', '--patches', default=None,
                         help="Directory where to find the patches")
-def upgrade(yes, dry_run, patches_dir):
+def upgrade(yes, dry_run, patches):
     """
-    Apply recusively the patches available until the last version
+    Upgrade the datamodel by applying recusively the patches available
     """
-    if not patches_dir:
-        patches_dir = current_app.config['MONGOPATCHER_PATCHES_DIR']
+    if not patches:
+        patches = current_app.config['MONGOPATCHER_PATCHES_DIR']
     patcher = _get_mongopatcher()
     if dry_run:
-        patcher.discover_and_apply(patches_dir, dry_run=dry_run)
+        patcher.discover_and_apply(patches, dry_run=dry_run)
     else:
-        if (yes or prompt_bool("Are you sure you want to alter "
-                               " {green}{name}{endc}".format(
-                green='\033[92m', name=patcher.db,
-                endc='\033[0m'))):
-            patcher.discover_and_apply(patches_dir)
+        if (yes or prompt_bool("Are you sure you want to alter %s" %
+                               green(patcher.db))):
+            patcher.discover_and_apply(patches)
         else:
             raise SystemExit('You changed your mind, exiting...')
 
 
-@patcher_manager.option('-p', '--patches-dir', dest='patches_dir', default=None,
+@patcher_manager.option('-p', '--patches', default=None,
                         help="Directory where to find the patches")
 @patcher_manager.option('-v', '--verbose', action='store_true', default=False,
                         help="Show patches' descriptions")
 @patcher_manager.option('-n', '--name', default=None,
                         help="Filter the patches (can be a regex)")
-def discover(patches_dir, verbose, name):
+def discover(patches, verbose, name):
     """List the patches available in the given patches directory"""
-    if not patches_dir:
-        patches_dir = current_app.config['MONGOPATCHER_PATCHES_DIR']
-    patches = _get_mongopatcher().discover(patches_dir)
+    if not patches:
+        patches = current_app.config['MONGOPATCHER_PATCHES_DIR']
+    patches = _get_mongopatcher().discover(patches)
     if name:
         import re
         patches = [p for p in patches if re.match(name, p.target_version)]
@@ -91,28 +103,28 @@ def discover(patches_dir, verbose, name):
                 print()
                 print(patch.target_version)
                 print("~" * len(patch.target_version))
-                print('\t' + patch.patchnote.strip().replace('\n', '\n\t'))
+                print(tabulate(patch.patchnote))
             else:
                 print(' - %s' % patch.target_version)
 
 
 @patcher_manager.option('-f', '--force', action='store_true', default=False,
-                        help="Overwrite existing manifest")
+                        help="Overwrite if a manifest is already installed")
 @patcher_manager.option('-v', '--version', default=None,
-                        help="Version of the manifest")
+                        help="Specify the datamodel's version")
 def init(version, force):
-    """Initialize mongopatcher manifest on the mongodb database"""
-    version = version or current_app.config['MONGOPATCHER_APP_VERSION']
+    """Initialize mongopatcher on the database by setting it manifest"""
+    version = version or current_app.config['MONGOPATCHER_DATAMODEL_VERSION']
     _get_mongopatcher().manifest.initialize(version, force)
-    print('Manifest initialized to version %s' % version)
+    print('Datamodel initialized to version %s' % version)
 
 
 @patcher_manager.option('-v', '--verbose', action='store_true',
                         default=False, help="Show history")
 def info(verbose):
-    """Show version of the database"""
+    """Show version of the datamodel"""
     if _get_mongopatcher().manifest.is_initialized():
-        print('Manifest version: %s' % _get_mongopatcher().manifest.version)
+        print('Datamodel version: %s' % _get_mongopatcher().manifest.version)
         if verbose:
             print('\nUpdate history:')
             for update in reversed(_get_mongopatcher().manifest.history):
@@ -121,7 +133,7 @@ def info(verbose):
                 print(' - %s: %s %s' % (update['timestamp'], update['version'],
                                         reason))
     else:
-        print('No manifest found')
+        print('Datamodel is not initialized')
 
 
 if __name__ == "__main__":

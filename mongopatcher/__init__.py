@@ -1,6 +1,6 @@
-from mongopatcher.mongopatcher import Patch, MongoPatcher
+from mongopatcher.mongopatcher import Patch, MongoPatcher, Manifest
 
 
-__version__ = '0.1.5'
+__version__ = '0.2.0'
 __license__ = 'MIT'
-__all__ = ('Patch', 'MongoPatcher')
+__all__ = ('Patch', 'MongoPatcher', 'Manifest')
