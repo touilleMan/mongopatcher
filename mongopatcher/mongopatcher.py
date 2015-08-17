@@ -154,15 +154,19 @@ class MongoPatcher:
                 return
             print('Applying patch %s => %s' % (patch.base_version,
                                                patch.target_version))
+            patch_pss = [patch.ps] if patch.ps else []
             if not dry_run:
-                self.apply_patch(patch)
-            if patch.ps:
+                patch_pss += self.apply_patch(patch)
+            if patch_pss:
                 pss.append("Patch %s:\n%s" % (patch.target_version,
-                                              tabulate(patch.ps)))
+                                              tabulate('\n'.join(patch_pss))))
             current_version = patch.target_version
 
     def apply_patch(self, patch):
-        patch.apply(self.manifest, self.db)
+        """
+        :return: the list of post-scriptum returned by the fixes
+        """
+        return patch.apply(self.manifest, self.db)
 
 
 class Patch:
@@ -219,15 +223,21 @@ class Patch:
     def apply(self, manifest, db, force=False):
         """
         Run the given patch to update the datamodel
+
+        :return: the list of post-scriptum returned by the fixes
         """
+        fixes_pss = []
         if not force:
             self.can_be_applied(manifest, db)
         for fix in self.fixes:
             print('\t%s...' % fix.__name__, flush=True, end='')
-            fix(db)
+            ps = fix(db)
+            if ps:
+                fixes_pss.append("%s: %s" % (fix.__name__, ps))
             print(' Done !')
         manifest.update(self.target_version,
                         reason='Update from %s' % self.base_version)
+        return fixes_pss
 
     def fix(self, fn):
         """
@@ -242,6 +252,7 @@ class Patch:
             @p.fix
             def my_fix(db):
                 db['my_collection'].update({}, {'$set': {'updated': True}})
+                return "optional post-scriptum"
 
         .. note:
             Fix order is not guarantee. If you need it, consider using sub
