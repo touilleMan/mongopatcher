@@ -42,6 +42,9 @@ class Manifest:
             self._manifest = self._load_manifest()
         return self._manifest['history']
 
+    def reload(self):
+        self._manifest = None
+
     def is_initialized(self):
         """
         Check if the datamodel has a manifest registered
@@ -160,6 +163,7 @@ class MongoPatcher:
             if patch_pss:
                 pss.append("Patch %s:\n%s" % (patch.target_version,
                                               tabulate('\n'.join(patch_pss))))
+                self.manifest.reload()
             current_version = patch.target_version
 
     def apply_patch(self, patch):
