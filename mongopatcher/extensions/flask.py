@@ -32,7 +32,7 @@ def init_patcher(app, db):
     if 'MONGOPATCHER_DATAMODEL_VERSION' not in app.config:
         # Find last version from patches
         patches = mp.discover(app.config['MONGOPATCHER_PATCHES_DIR'])
-        last_version = patches[-1].target_version or '1.0.0'
+        last_version = patches[-1].target_version if patches else '1.0.0'
         app.config.setdefault('MONGOPATCHER_DATAMODEL_VERSION', last_version)
     mp.__class__.need_upgrade = need_upgrade
     mp.app_datamodel_version = app.config['MONGOPATCHER_DATAMODEL_VERSION']
