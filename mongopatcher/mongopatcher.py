@@ -163,7 +163,7 @@ class MongoPatcher:
             if patch_pss:
                 pss.append("Patch %s:\n%s" % (patch.target_version,
                                               tabulate('\n'.join(patch_pss))))
-                self.manifest.reload()
+            self.manifest.reload()
             current_version = patch.target_version
 
     def apply_patch(self, patch):
@@ -240,7 +240,7 @@ class Patch:
                 fixes_pss.append("%s: %s" % (fix.__name__, ps))
             print(' Done !')
         manifest.update(self.target_version,
-                        reason='Update from %s' % self.base_version)
+                        reason='Upgrade from %s' % self.base_version)
         return fixes_pss
 
     def fix(self, fn):
