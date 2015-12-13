@@ -44,7 +44,7 @@ setup(
     package_dir={'mongopatcher': 'mongopatcher'},
     include_package_data=True,
     install_requires=REQUIRES,
-    license=read("LICENSE"),
+    license='MIT',
     zip_safe=False,
     keywords='mongoengine',
     classifiers=[
