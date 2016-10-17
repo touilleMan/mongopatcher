@@ -191,6 +191,9 @@ class Patch:
         before applying the patch to prevent inconsistent states
     """
 
+    def __repr__(self):
+        return "<datamodel Patch (%s -> %s)>" % (self.base_version, self.target_version)
+
     def __init__(self, base_version, target_version, patchnote=None, ps=None):
         """
         :param base_version: Datamodel version to patch against

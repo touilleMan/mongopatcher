@@ -1,0 +1,28 @@
+sudo: false
+services:
+- mongodb
+addons:
+  apt:
+    sources:
+    - mongodb-3.0-precise
+    packages:
+    - mongodb-org-server
+    - mongodb-org-shell
+language: python
+python:
+- '3.4'
+- '3.5'
+before_install:
+- mongo --version
+install:
+- pip install -U pytest>=2.8
+script: py.test tests
+deploy:
+  provider: pypi
+  distributions: sdist bdist_wheel
+  user: touilleMan
+  password:
+    secure: 4AI3YJ2UaGbdzoNeY18qP3eKmNsmZLa7gtaSZLOxPZMr8L4eSRT8EfNuC9wX4ilmdYWzOH7E6LB5OC2WLawcujgiqXByUnqqnMZfcnwU5E6KWsZruX7lgLlCwx8T6q/f0gn/YJzmU/MI6VgK53t6LrbweuBqbsiJatWkfi85YbHKf+Z4Hm4h1t39iI71NtrxUtFnBuQZ/RyZvLWKQtJNL34ImX383YnUr9cLybbLz7tPbdAuB2klK73J73TuIXmG3fJwReX0jer+oBfrzDhhytPx8wX7DYdcImSx9ohguglWZptfQ4vPls0YMjNEcSrO50h7n8XzHUauVMwGyd9gbHadVGkbfQJm2z5RAfS1IXZbfc1MvMyocjUbR0GqQ9nl5XOmUI0XQ7RHc+KhY3bzTlwAt3C55UBaVL5PM30nfyyjmPNQNda1sM9+d9+n1Xfz5SBfNSlXbky1Z2HSUBNbIYoVxselGpzi8gZfFdzJLCu5WokHHpQIAgveENgzMMLFcxbF1hCUhhIOUNIuvkSHFb2B8mYYzNExNKrlbIJBrFe/3LpduPw9h64zIv02/mxCJY0a44HBK1gtoJWITku2ezlp3L7xKmklIOIXtqpf07mIJKoJAdq0YH9SZxz8P7eOY0Fo9JsiAHFYSGm0vVf/Pv1hejj9AWIYBk2t90y3oao=
+  on:
+    tags: true
+    repo: touilleMan/mongopatcher
