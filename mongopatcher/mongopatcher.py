@@ -111,12 +111,13 @@ class MongoPatcher:
         self.patches_dir = patches_dir
         self.manifest = Manifest(db, collection)
 
-    def discover(self, directory):
+    def discover(self, directory=None):
         """
         Recusively search & collect :class:`Patch`
 
-        :param directory: Directory to search in
+        :param directory: Directory to search in (default: patches_dir)
         """
+        directory = directory or self.patches_dir
         patches = []
         for root, dirs, files in os.walk(directory):
             for f in files:
@@ -130,13 +131,14 @@ class MongoPatcher:
                         patches.append(elem)
         return sorted(patches, key=lambda x: x.target_version)
 
-    def discover_and_apply(self, directory, dry_run=False):
+    def discover_and_apply(self, directory=None, dry_run=False):
         """
         Retrieve the patches and try to apply them against the datamodel
 
-        :param directory: Directory to search the patch in
+        :param directory: Directory to search the patch in (default: patches_dir)
         :param dry_run: Don't actually apply the patches
         """
+        directory = directory or self.patches_dir
         patches_dict = {p.base_version: p for p in self.discover(directory)}
         current_version = self.manifest.version
         if not patches_dict.get(current_version):

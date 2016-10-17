@@ -71,11 +71,9 @@ def upgrade(yes, dry_run, patches):
     """
     Upgrade the datamodel by applying recusively the patches available
     """
-    if not patches:
-        patches = current_app.config['MONGOPATCHER_PATCHES_DIR']
     patcher = _get_mongopatcher()
     if dry_run:
-        patcher.discover_and_apply(patches, dry_run=dry_run)
+        patcher.discover_and_apply(directory=patches, dry_run=dry_run)
     else:
         if (yes or prompt_bool("Are you sure you want to alter %s" %
                                green(patcher.db))):
@@ -92,9 +90,7 @@ def upgrade(yes, dry_run, patches):
                         help="Filter the patches (can be a regex)")
 def discover(patches, verbose, name):
     """List the patches available in the given patches directory"""
-    if not patches:
-        patches = current_app.config['MONGOPATCHER_PATCHES_DIR']
-    patches = _get_mongopatcher().discover(patches)
+    patches = _get_mongopatcher().discover(directory=patches)
     if name:
         import re
         patches = [p for p in patches if re.match(name, p.target_version)]
