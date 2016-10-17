@@ -15,7 +15,7 @@ def read(fname):
 
 setup(
     name='mongopatcher',
-    version='0.2.6',
+    version='0.3.0',
     description='Mongodb incremental migration tool',
     long_description=read('README.rst'),
     author='Emmanuel Leblond',
