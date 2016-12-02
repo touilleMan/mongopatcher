@@ -29,7 +29,11 @@ class TestBasic:
 
     def test_discover(self):
         patches = self.patcher.discover()
-        assert len(patches) == 4
+        assert len(patches) == 6
+        target_versions = [p.target_version for p in patches]
+        base_versions = [p.base_version for p in patches]
+        assert base_versions == ['0.0.0', '1.0.0', '1.0.1', '1.0.2', '1.1.1', '1.1.9']
+        assert target_versions == ['1.0.0', '1.0.1', '1.0.2', '1.1.0', '1.1.9', '1.1.10']
 
     def test_discover_and_apply(self):
         self.patcher.manifest.initialize('0.0.0')

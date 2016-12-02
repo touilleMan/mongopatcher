@@ -129,7 +129,11 @@ class MongoPatcher:
                     elem = getattr(module, elem)
                     if isinstance(elem, Patch):
                         patches.append(elem)
-        return sorted(patches, key=lambda x: x.target_version)
+
+        def patch_key(patch):
+            return tuple(int(i) for i in patch.target_version.split('.'))
+
+        return sorted(patches, key=patch_key)
 
     def discover_and_apply(self, directory=None, dry_run=False):
         """
