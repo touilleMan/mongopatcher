@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 from flask import current_app
-from flask.ext.script import Manager, prompt_bool
+from flask_script import Manager, prompt_bool
 
 from mongopatcher import MongoPatcher
 from mongopatcher.tools import green, tabulate
