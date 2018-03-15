@@ -11,7 +11,7 @@ addons:
 language: python
 python:
 - '3.4'
-- '3.5'
+- '3.6'
 before_install:
 - mongo --version
 - pip install -e .
@@ -27,3 +27,4 @@ deploy:
   on:
     tags: true
     repo: touilleMan/mongopatcher
+    python: 3.6
