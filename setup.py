@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 REQUIRES = (
-    'pymongo>=2.8'
+    'pymongo==4.0'
 )
 
 

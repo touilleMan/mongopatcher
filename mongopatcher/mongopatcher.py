@@ -71,11 +71,11 @@ class Manifest:
         _check_version_format(version)
         if not force and self.collection.find_one({'_id': 'manifest'}):
             raise DatamodelManifestError("Datamodel has already a manifest")
-        manifest = self.collection.update({'_id': 'manifest'}, {
-            '_id': 'manifest', 'version': version, 'history': [
+        manifest = self.collection.update_one({'_id': 'manifest'}, {
+            '$set': {'_id': 'manifest', 'version': version, 'history': [
                 {'timestamp': datetime.utcnow(), 'version': version,
                  'reason': 'Initialize version'}
-            ]}, upsert=True)
+            ]}}, upsert=True)
         return manifest
 
     def update(self, version, reason=None):
@@ -86,7 +86,7 @@ class Manifest:
         :param reason: Optional reason of the update (i.g. "Update from x.y.z")
         """
         _check_version_format(version)
-        return self.collection.update({'_id': 'manifest'}, {
+        return self.collection.update_one({'_id': 'manifest'}, {
             '$set': {'version': version},
             '$push': {'history': {
                 'timestamp': datetime.utcnow(), 'version': version,
